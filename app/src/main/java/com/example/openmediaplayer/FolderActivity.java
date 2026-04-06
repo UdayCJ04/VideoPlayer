@@ -69,7 +69,41 @@ public class FolderActivity extends AppCompatActivity {
         txtPath.setText(displayPath);
     }
 
-    // 🔥 MAIN LOGIC
+    private boolean isMediaFile(String name) {
+        return name.endsWith(".mp4") ||
+                name.endsWith(".mkv") ||
+                name.endsWith(".avi");
+    }
+
+    private boolean containsMedia(File dir) {
+
+        File[] files = dir.listFiles();
+        if (files == null) return false;
+
+        for (File file : files) {
+
+            if (file.isHidden()) continue;
+
+            if (file.isDirectory()) {
+                if (containsMedia(file)) return true;
+            } else {
+                if (isMediaFile(file.getName().toLowerCase())) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private List<File> convertToFileList(List<MediaItem> mediaItems) {
+        List<File> files = new ArrayList<>();
+        for (MediaItem item : mediaItems) {
+            files.add(new File(item.getPath()));
+        }
+        return files;
+    }
+
     private void loadContent(String path) {
 
         File dir = new File(path);
@@ -77,73 +111,57 @@ public class FolderActivity extends AppCompatActivity {
 
         if (files == null) return;
 
-        List<File> folders = new ArrayList<>();
-        List<File> mediaFiles = new ArrayList<>();
+        List<FolderItem> folderItems = new ArrayList<>();
+        List<MediaItem> mediaItems = new ArrayList<>();
 
         for (File file : files) {
 
             if (file.isHidden()) continue;
 
             if (file.isDirectory()) {
-                folders.add(file);
+
+                if (containsMedia(file)) {
+                    folderItems.add(new FolderItem(
+                            file.getName(),
+                            file.getAbsolutePath()
+                    ));
+                }
+
             } else {
 
                 String name = file.getName().toLowerCase();
 
-                if (name.endsWith(".mp4") ||
-                        name.endsWith(".mkv") ||
-                        name.endsWith(".avi")) {
+                if (isMediaFile(name)) {
 
-                    mediaFiles.add(file);
+                    String type = "video";
+
+                    if (name.endsWith(".mp3") || name.endsWith(".wav")) {
+                        type = "audio";
+                    } else if (name.endsWith(".jpg") || name.endsWith(".png")) {
+                        type = "image";
+                    }
+
+                    mediaItems.add(new MediaItem(
+                            file.getName(),
+                            file.getAbsolutePath(),
+                            type
+                    ));
                 }
             }
         }
 
-        // 📂 PRIORITY: folders first
-        if (!folders.isEmpty()) {
+        sortFiles(convertToFileList(mediaItems));
 
-            List<FolderItem> folderItems = new ArrayList<>();
-
-            for (File file : folders) {
-                folderItems.add(new FolderItem(
-                        file.getName(),
-                        file.getAbsolutePath()
-                ));
-            }
-
+        if (!folderItems.isEmpty()) {
             recyclerView.setAdapter(new FolderAdapter(this, folderItems));
         }
 
-        // 🎬 MEDIA
-        else {
-
-            sortFiles(mediaFiles);
-
-            List<MediaItem> mediaItems = new ArrayList<>();
-
-            for (File file : mediaFiles) {
-
-                String name = file.getName().toLowerCase();
-                String type = "video";
-
-                if (name.endsWith(".mp3") || name.endsWith(".wav")) {
-                    type = "audio";
-                } else if (name.endsWith(".jpg") || name.endsWith(".png")) {
-                    type = "image";
-                }
-
-                mediaItems.add(new MediaItem(
-                        file.getName(),
-                        file.getAbsolutePath(),
-                        type
-                ));
-            }
-
+        if (!mediaItems.isEmpty()) {
             recyclerView.setAdapter(new MediaAdapter(this, mediaItems));
         }
     }
 
-    // 🔄 SORTING
+
     private void sortFiles(List<File> files) {
 
         files.sort((f1, f2) -> {
