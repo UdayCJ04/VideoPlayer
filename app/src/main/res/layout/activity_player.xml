@@ -9,4 +9,5 @@
     android:background="@android:color/black"
 
     app:use_controller="true"
+    app:show_subtitle_button="true"
     app:resize_mode="fit"/>
